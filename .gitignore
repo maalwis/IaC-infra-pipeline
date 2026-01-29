@@ -1,1 +1,5 @@
 /.idea/
+/aws-keys
+*.tfstate
+*.tfstate.backup
+.terraform/
