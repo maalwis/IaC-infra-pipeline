@@ -1,11 +1,11 @@
 output "vpc_id" {
   description = "ID of the VPC."
-  value       = aws_vpc.this.id
+  value       = aws_vpc.vpc.id
 }
 
 output "vpc_cidr_block" {
   description = "Primary CIDR block of the VPC. Useful when authoring security group rules in other modules."
-  value       = aws_vpc.this.cidr_block
+  value       = aws_vpc.vpc.cidr_block
 }
 
 output "public_subnet_ids" {
