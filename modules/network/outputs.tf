@@ -1,3 +1,8 @@
+output "vpc_name" {
+  description = "Name of the VPC"
+  value       = "${var.project_name}-${var.environment}-vpc"
+}
+
 output "vpc_id" {
   description = "ID of the VPC."
   value       = aws_vpc.vpc.id
