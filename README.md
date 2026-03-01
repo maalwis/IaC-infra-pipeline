@@ -105,4 +105,3 @@ All resources inherit four baseline tags from the provider `default_tags` block:
 | `ManagedBy` | `"terraform"` (hardcoded) |
 
 Individual resources add a `Name` tag and, where relevant, a `Tier` tag (`public` / `private`).
-
