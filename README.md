@@ -6,11 +6,57 @@ Provisions a foundational AWS VPC with public and private subnets spread across 
 
 ## Architecture
 
+### Repository Structure
+
+```
+.
+├── backend/                    # Remote state bootstrap — apply once before any environment
+│   ├── main.tf                 # S3 state bucket + DynamoDB lock table
+│   ├── outputs.tf
+│   ├── provider.tf
+│   ├── terraform.tfvars
+│   ├── variables.tf
+│   └── versions.tf
+│
+├── environments/
+│   ├── dev/                    # State: infra/dev/terraform.tfstate
+│   │   ├── main.tf
+│   │   ├── outputs.tf
+│   │   ├── provider.tf
+│   │   ├── terraform.tfvars
+│   │   ├── variables.tf
+│   │   └── versions.tf
+│   ├── staging/                # State: infra/staging/terraform.tfstate
+│   │   └── ...
+│   └── prod/                   # State: infra/prod/terraform.tfstate
+│       └── ...
+│
+└── modules/
+    └── network/                # Reusable VPC module consumed by each environment
+        ├── main.tf
+        ├── outputs.tf
+        └── variables.tf
+```
+
+### VPC Layout
+
 ```
 VPC (vpc_cidr)
 ├── Public Subnets  (one per AZ) — map_public_ip_on_launch = true
 └── Private Subnets (one per AZ)
 ```
+
+### Remote State
+
+Each environment stores its state file in a shared S3 bucket with DynamoDB used for state locking to prevent concurrent applies. The `backend/` configuration provisions these resources and must be applied once before initialising any environment.
+
+> The state file records the last known result of operations such as `terraform apply`, `destroy`, and `refresh` — representing what Terraform has provisioned based on your declared configuration, not a live snapshot of the actual infrastructure. Terraform uses it to calculate the diff between your desired configuration and what was last applied, determining what needs to be created, updated, or destroyed.
+
+| Environment | State Key                         |
+|-------------|-----------------------------------|
+| dev         | `infra/dev/terraform.tfstate`     |
+| staging     | `infra/staging/terraform.tfstate` |
+| prod        | `infra/prod/terraform.tfstate`    |
 
 ---
 
@@ -29,7 +75,7 @@ AWS credentials must be available in the environment (environment variables, `~/
 
 ```hcl
 module "network" {
-  source = "./modules/network"
+  source = "../../modules/network"
 
   project_name         = "mumbai"
   environment          = "dev"
@@ -45,24 +91,25 @@ module "network" {
 
 ## Quick Start
 
+### 1. Bootstrap remote state (once)
+
+The `backend/` must be applied first to create the S3 bucket and DynamoDB lock table before any environment can use remote state.
+
 ```bash
-# 1. Initialise
+cd backend
 terraform init
-
-# 2. Review the plan
-terraform plan
-
-# 3. Apply
 terraform apply
 ```
 
-### Switching to remote state
-
-Edit `versions.tf`: comment out the `backend "local"` block and uncomment the `backend "s3"` block, filling in your bucket name, key, region, and DynamoDB table name. Then re-initialise:
+### 2. Initialise and apply an environment
 
 ```bash
-terraform init -migrate-state
+terraform -chdir=environments/dev init
+terraform -chdir=environments/dev plan
+terraform -chdir=environments/dev apply
 ```
+
+Repeat for `staging` and `prod` by swapping the environment path.
 
 ---
 
@@ -71,6 +118,7 @@ terraform init -migrate-state
 | Name | Type | Required | Description |
 |---|---|---|---|
 | `aws_region` | `string` | yes | AWS region (e.g. `ap-south-1`) |
+| `aws_account_id` | `string` | yes | AWS account ID — appended to S3 bucket name for global uniqueness |
 | `project_name` | `string` | yes | Short lowercase identifier prefixed on all resource names |
 | `environment` | `string` | yes | One of `dev`, `staging`, `prod` |
 | `cost_center` | `string` | yes | FinOps billing code (e.g. `CC-1234`) |
@@ -83,13 +131,25 @@ terraform init -migrate-state
 
 ## Outputs
 
+### Network module
+
 | Name | Description |
 |---|---|
 | `vpc_id` | VPC ID |
+| `vpc_name` | VPC name |
 | `vpc_cidr_block` | VPC primary CIDR block |
 | `public_subnet_ids` | Public subnet IDs (ordered by AZ) |
 | `private_subnet_ids` | Private subnet IDs (ordered by AZ) |
 | `availability_zones` | AZs used — reference this in downstream modules |
+
+### Backend
+
+| Name | Description |
+|---|---|
+| `state_bucket_name` | Name of the S3 bucket storing state files |
+| `state_bucket_arn` | ARN of the S3 bucket — used for IAM policy definitions |
+| `dynamodb_lock_table_name` | Name of the DynamoDB state lock table |
+| `dynamodb_lock_table_arn` | ARN of the DynamoDB table — used for IAM policy definitions |
 
 ---
 
