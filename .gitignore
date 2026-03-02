@@ -1,7 +1,5 @@
 .idea/
 /resources/aws-keys
-render.sh
-rendered.tf
 
 .terraform/
 
@@ -29,3 +27,7 @@ override.tf.json
 .terraformrc
 terraform.rc
 
+/render-tf.sh
+/render-yml.sh
+/rendered.tf
+/rendered-yml.yml

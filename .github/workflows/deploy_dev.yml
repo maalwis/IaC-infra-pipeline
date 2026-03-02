@@ -1,0 +1,14 @@
+name: Deploy Dev
+
+on:
+  push:
+    branches:
+      - main
+
+jobs:
+  deploy:
+    uses: ./.github/workflows/terraform_apply.yml
+    with:
+      environment: dev
+      working_directory: environments/dev
+      apply: true

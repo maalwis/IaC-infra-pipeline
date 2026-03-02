@@ -1,0 +1,13 @@
+name: feature_ci
+
+on:
+  push:
+    branches:
+      - 'feature/**'
+
+jobs:
+  ci:
+    uses: ./.github/workflows/terraform_plan.yml
+    with:
+      environment: dev
+      working_directory: environments/dev
