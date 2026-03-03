@@ -1,0 +1,22 @@
+name: branch_validation
+
+on:
+  pull_request:
+    branches:
+      - main
+
+jobs:
+  validate-branch-name:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Check branch naming convention
+        run: |
+          BRANCH="${{ github.head_ref }}"
+          echo "PR source branch: $BRANCH"
+          if [[ ! "$BRANCH" =~ ^feature/.+ ]]; then
+            echo "❌ Branch name must start with 'feature/' followed by a descriptor."
+            echo "   Example: feature/my-change"
+            echo "   Got: $BRANCH"
+            exit 1
+          fi
+          echo "Branch name is valid: $BRANCH"

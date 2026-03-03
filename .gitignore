@@ -1,7 +1,5 @@
 .idea/
 /resources/aws-keys
-render.sh
-rendered.tf
 
 .terraform/
 
@@ -12,9 +10,6 @@ rendered.tf
 crash.log
 crash.*.log
 
-
-*.tfvars
-*.tfvars.json
 
 
 override.tf
@@ -29,3 +24,7 @@ override.tf.json
 .terraformrc
 terraform.rc
 
+/render-tf.sh
+/render-yml.sh
+/rendered.tf
+/rendered-yml.yml

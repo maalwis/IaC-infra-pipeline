@@ -1,0 +1,102 @@
+name: main_ci
+
+on:
+  push:
+    branches:
+      - main
+
+jobs:
+  # ── 1. Drift Detection ────────────────────────────────────────────────────────
+  drift-check:
+    runs-on: ubuntu-latest
+    environment: dev
+    permissions:
+      id-token: write
+      contents: read
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Configure AWS Credentials
+        uses: aws-actions/configure-aws-credentials@v4
+        with:
+          aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY_ID }}
+          aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
+          aws-region: us-east-1
+
+      - uses: hashicorp/setup-terraform@v3
+
+      - name: Terraform Init
+        working-directory: environments/dev
+        run: terraform init
+
+      - name: Drift Check (terraform plan -detailed-exitcode)
+        working-directory: environments/dev
+        run: |
+          set +e
+          terraform plan -detailed-exitcode
+          EXIT_CODE=$?
+          set -e
+
+          if [ $EXIT_CODE -eq 0 ]; then
+            echo "No drift detected — infrastructure matches state."
+          elif [ $EXIT_CODE -eq 2 ]; then
+            echo "Drift detected — infrastructure differs from Terraform state."
+            echo "Review the plan above before proceeding."
+            exit 1
+          else
+            echo "Terraform plan failed with an error."
+            exit 1
+          fi
+
+  # ── 2. Plan All Environments ──────────────────────────────────────────────────
+  plan-dev:
+    needs: drift-check
+    uses: ./.github/workflows/terraform_plan.yml
+    secrets: inherit
+    with:
+      environment: dev
+      working_directory: environments/dev
+
+  plan-staging:
+    needs: drift-check
+    uses: ./.github/workflows/terraform_plan.yml
+    secrets: inherit
+    with:
+      environment: staging
+      working_directory: environments/staging
+
+  plan-prod:
+    needs: drift-check
+    uses: ./.github/workflows/terraform_plan.yml
+    secrets: inherit
+    with:
+      environment: prod
+      working_directory: environments/prod
+
+  # ── 3. Deploy to Dev (auto, after all plans pass) ─────────────────────────────
+  deploy-dev:
+    needs: [plan-dev, plan-staging, plan-prod]
+    uses: ./.github/workflows/terraform_apply.yml
+    secrets: inherit
+    with:
+      environment: dev
+      working_directory: environments/dev
+
+  # ── 4. Create GitHub Release (after dev deploy succeeds) ─────────────────────
+  # Creates a release with auto-generated notes. Prod deploy is triggered separately
+  # by manually pushing a semver tag (e.g. v1.2.3) after validating staging.
+  release:
+    needs: deploy-dev
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Create GitHub Release
+        uses: softprops/action-gh-release@v2
+        with:
+          tag_name: v${{ github.run_number }}
+          name: Release v${{ github.run_number }}
+          generate_release_notes: true
+          target_commitish: ${{ github.sha }}
