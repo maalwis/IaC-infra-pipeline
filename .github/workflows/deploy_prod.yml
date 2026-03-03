@@ -8,6 +8,7 @@ on:
 jobs:
   deploy:
     uses: ./.github/workflows/terraform_apply.yml
+    secrets: inherit
     with:
       environment: prod
       working_directory: environments/prod
