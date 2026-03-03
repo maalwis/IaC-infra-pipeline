@@ -4,6 +4,11 @@ on:
   push:
     branches:
       - 'feature/**'
+    paths:
+      - 'environments/**'
+      - 'modules/**'
+      - '*.tf'
+      - '**/*.tf'
 
 jobs:
   ci:

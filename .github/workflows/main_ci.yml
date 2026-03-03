@@ -4,6 +4,11 @@ on:
   push:
     branches:
       - main
+    paths:
+      - 'environments/**'
+      - 'modules/**'
+      - '*.tf'
+      - '**/*.tf'
 
 jobs:
   # ── 1. Drift Detection ────────────────────────────────────────────────────────
